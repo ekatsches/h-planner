@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Хоккей">
+<title>Хоккей — планировщик</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="puck" aria-hidden="true"></div>
+    <div>
+      <h1 id="topTitle">Хоккей</h1>
+      <p id="topSub" class="sub">планировщик матчей</p>
+    </div>
+  </div>
+  <button id="jumpToday" class="ghost-btn" title="К сегодняшнему дню">сегодня</button>
+</header>
+
+<main>
+  <!-- ЭКРАН: ДЕНЬ -->
+  <section id="view-day" class="view">
+    <div class="weekbar">
+      <button class="arrow" id="prevWeek" aria-label="Предыдущая неделя">‹</button>
+      <div class="strip" id="strip"></div>
+      <button class="arrow" id="nextWeek" aria-label="Следующая неделя">›</button>
+      <div class="picker">
+        <button class="arrow" id="openPicker" aria-label="Выбрать дату" type="button">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        </button>
+        <input type="date" id="datePicker" class="date-overlay" aria-label="Дата">
+      </div>
+    </div>
+
+    <div class="filters" id="filtersDay"></div>
+
+    <h2 id="dayHead" class="day-head"></h2>
+    <div id="dayList" class="list"></div>
+  </section>
+
+  <!-- ЭКРАН: ВСЁ -->
+  <section id="view-all" class="view hidden">
+    <div class="searchwrap">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Команда, лига, заметка…" autocomplete="off">
+    </div>
+    <div class="filters" id="filtersAll"></div>
+    <div class="switch" id="scopeSwitch">
+      <button data-scope="upcoming" class="on">предстоящие</button>
+      <button data-scope="past">прошедшие</button>
+      <button data-scope="all">все</button>
+    </div>
+    <div id="allList" class="list"></div>
+  </section>
+
+  <!-- ЭКРАН: ДАННЫЕ -->
+  <section id="view-data" class="view hidden">
+    <div class="card">
+      <h3>Счёт</h3>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="card">
+      <h3>Напоминания</h3>
+      <p class="muted" id="remindStatus"></p>
+      <div class="btnrow">
+        <button class="btn primary" id="remindToggle">Включить</button>
+        <button class="btn" id="testRemind">Проверить</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Резервная копия</h3>
+      <p class="muted">Данные хранятся только в этом телефоне. Сделай копию перед сменой устройства или очисткой браузера.</p>
+      <div class="btnrow">
+        <button class="btn" id="exportJson">Скачать копию (.json)</button>
+        <button class="btn" id="importJson">Загрузить копию</button>
+      </div>
+      <input type="file" id="fileInput" accept="application/json,.json" hidden>
+    </div>
+
+    <div class="card">
+      <h3>В календарь</h3>
+      <p class="muted">Выгрузит все предстоящие матчи с напоминанием за час — сработает даже при закрытом приложении.</p>
+      <button class="btn" id="exportIcs">Экспорт .ics</button>
+    </div>
+
+    <div class="card">
+      <h3>Лиги</h3>
+      <p class="muted">Мои лиги подсвечены. Свою можно вписать руками при добавлении матча.</p>
+      <div class="chips" id="leaguesList"></div>
+    </div>
+
+    <div class="card danger">
+      <h3>Очистить</h3>
+      <button class="btn danger-btn" id="wipe">Удалить все события</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="tab on" data-view="day">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+    <span>День</span>
+  </button>
+  <button class="tab" data-view="all">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    <span>Всё</span>
+  </button>
+  <button class="tab" data-view="data">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+    <span>Данные</span>
+  </button>
+</nav>
+
+<button class="fab" id="addBtn" aria-label="Добавить матч">+</button>
+
+<!-- МОДАЛКА -->
+<div class="sheet-wrap hidden" id="sheetWrap">
+  <div class="sheet-bg" id="sheetBg"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-grab"></div>
+    <h2 id="sheetTitle">Новый матч</h2>
+    <form id="form" autocomplete="off">
+      <input type="hidden" id="f-id">
+
+      <label class="field">
+        <span>Дата</span>
+        <input type="date" id="f-date" required>
+      </label>
+
+      <label class="field">
+        <span>Время <em class="muted">(можно пустым)</em></span>
+        <input type="time" id="f-time">
+      </label>
+
+      <label class="field">
+        <span>Лига</span>
+        <input type="text" id="f-league" list="leagueDatalist" placeholder="КХЛ, NHL, Чемпионат мира…">
+        <datalist id="leagueDatalist"></datalist>
+        <div class="presets" id="leaguePresets"></div>
+      </label>
+
+      <div class="two">
+        <label class="field">
+          <span>Хозяева</span>
+          <input type="text" id="f-home" placeholder="Спартак">
+        </label>
+        <label class="field">
+          <span>Гости</span>
+          <input type="text" id="f-away" placeholder="ЦСКА">
+        </label>
+      </div>
+
+      <div class="field">
+        <span>Что с матчем</span>
+        <div class="statusrow" id="statusRow">
+          <button type="button" class="st" data-st="attend">🎟 иду</button>
+          <button type="button" class="st" data-st="watch">📺 смотрю</button>
+          <button type="button" class="st" data-st="read">📖 почитать</button>
+          <button type="button" class="st" data-st="done">✅ было</button>
+          <button type="button" class="st" data-st="skip">🚫 мимо</button>
+        </div>
+        <p class="tiny">Напомню за час до матчей «иду» и «смотрю».</p>
+      </div>
+
+      <label class="field">
+        <span>Заметка</span>
+        <textarea id="f-note" rows="2" placeholder="где смотреть, во сколько выезд, что почитать…"></textarea>
+      </label>
+
+      <p class="hint" id="moveHint"></p>
+
+      <div class="btnrow">
+        <button type="submit" class="btn primary">Сохранить</button>
+        <button type="button" class="btn" id="cancelBtn">Отмена</button>
+      </div>
+      <button type="button" class="btn danger-btn wide hidden" id="deleteBtn">Удалить матч</button>
+      <button type="button" class="btn wide hidden" id="dupBtn">Дублировать матч</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

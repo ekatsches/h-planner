@@ -1,206 +1,259 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1420">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Хоккей">
-<title>Хоккей — планировщик</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="styles.css">
-</head>
-<body>
+:root{
+  --bg:#0b1420; --bg2:#111e2d; --card:#16263a;
+  --line:rgba(255,255,255,.09);
+  --txt:#e9f2fb; --muted:#8ba3bd; --ice:#6ee7ff;
+  --attend:#ffb547; --watch:#4fd1ff; --read:#b48cff; --done:#4ade80; --skip:#64748b;
+  --radius:16px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(900px 420px at 12% -10%, #17324d 0%, transparent 60%),
+    radial-gradient(700px 380px at 100% 0%, #12283d 0%, transparent 55%),
+    var(--bg);
+  color:var(--txt);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  min-height:100dvh;
+  padding-bottom:calc(96px + var(--safe-b));
+}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+.muted{color:var(--muted)}
+em.muted{font-style:normal;font-weight:400;font-size:12px}
+.hidden{display:none !important}
+.tiny{font-size:11.5px;color:var(--muted);margin:7px 0 0;line-height:1.35}
 
-<header class="topbar">
-  <div class="brand">
-    <div class="puck" aria-hidden="true"></div>
-    <div>
-      <h1 id="topTitle">Хоккей</h1>
-      <p id="topSub" class="sub">планировщик матчей</p>
-    </div>
-  </div>
-  <button id="jumpToday" class="ghost-btn" title="К сегодняшнему дню">сегодня</button>
-</header>
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 18px 10px;
+  position:sticky;top:0;z-index:20;
+  background:linear-gradient(180deg, rgba(11,20,32,.96) 60%, rgba(11,20,32,0));
+  backdrop-filter:blur(8px);
+}
+.brand{display:flex;align-items:center;gap:11px}
+.puck{
+  width:30px;height:30px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%, #3c5a78, #0d1a27 70%);
+  border:1px solid rgba(110,231,255,.45);
+  box-shadow:0 0 16px rgba(110,231,255,.28) inset;flex:none;
+}
+h1{font-size:19px}
+.sub{margin:1px 0 0;font-size:12px;color:var(--muted)}
+.ghost-btn{
+  background:rgba(110,231,255,.1);color:var(--ice);border:1px solid rgba(110,231,255,.28);
+  border-radius:999px;padding:7px 13px;font-size:13px;font-weight:600;font-family:inherit;
+}
+.ghost-btn:active{transform:scale(.96)}
 
-<main>
-  <section id="view-day" class="view">
-    <div class="weekbar">
-      <button class="arrow" id="prevWeek" aria-label="Предыдущая неделя">‹</button>
-      <div class="strip" id="strip"></div>
-      <button class="arrow" id="nextWeek" aria-label="Следующая неделя">›</button>
-      <div class="picker">
-        <button class="arrow" id="openPicker" aria-label="Выбрать дату" type="button">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-        </button>
-        <input type="date" id="datePicker" class="date-overlay" aria-label="Дата">
-      </div>
-    </div>
+.weekbar{display:flex;align-items:center;gap:6px;padding:2px 12px 0}
+.arrow{
+  background:transparent;border:0;color:var(--muted);font-size:24px;line-height:1;
+  width:30px;height:44px;display:grid;place-items:center;border-radius:10px;flex:none;font-family:inherit;
+}
+.arrow:active{background:rgba(255,255,255,.06)}
+.strip{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex:1;padding:6px 0}
+.strip::-webkit-scrollbar{display:none}
+.picker{position:relative;flex:none;width:34px;height:44px}
+.picker .arrow{width:34px;height:44px}
+.date-overlay{
+  position:absolute;inset:0;width:100%;height:100%;opacity:0;
+  border:0;padding:0;margin:0;background:transparent;color:transparent;
+  -webkit-appearance:none;appearance:none;cursor:pointer;
+}
+.daychip{
+  flex:none;width:44px;padding:7px 0 8px;border-radius:13px;border:1px solid transparent;
+  background:rgba(255,255,255,.035);color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  font-size:11px;position:relative;transition:.15s;font-family:inherit;
+}
+.daychip b{font-size:16px;font-weight:650;color:var(--txt)}
+.daychip .wd{font-size:10px;text-transform:lowercase}
+.daychip.today{border-color:rgba(110,231,255,.4)}
+.daychip.today .wd{color:var(--ice)}
+.daychip.sel{background:linear-gradient(160deg,#2a5f80,#1d4a68);border-color:rgba(110,231,255,.55);color:#dff6ff}
+.daychip.sel b{color:#fff}
+.daychip .dot{position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--ice);opacity:0}
+.daychip.has .dot{opacity:.95}
 
-    <div class="filters" id="filtersDay"></div>
+.filters{display:flex;gap:7px;overflow-x:auto;padding:12px 18px 4px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.fchip{
+  flex:none;border:1px solid var(--line);background:rgba(255,255,255,.04);
+  color:var(--muted);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:550;font-family:inherit;
+}
+.fchip.on{background:rgba(110,231,255,.14);border-color:rgba(110,231,255,.5);color:#d8f6ff}
 
-    <h2 id="dayHead" class="day-head"></h2>
-    <div id="dayList" class="list"></div>
-  </section>
+.day-head{
+  font-size:13px;font-weight:600;color:var(--muted);text-transform:lowercase;
+  padding:14px 18px 8px;letter-spacing:.01em;
+}
+.list{padding:0 14px;display:flex;flex-direction:column;gap:9px}
+.date-group{margin:0 0 6px}
+.date-group h4{
+  margin:16px 4px 8px;font-size:12px;font-weight:650;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);
+}
+.date-group.today h4{color:var(--ice)}
 
-  <section id="view-all" class="view hidden">
-    <div class="searchwrap">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="search" type="search" placeholder="Команда, лига, заметка…" autocomplete="off">
-    </div>
-    <div class="filters" id="filtersAll"></div>
-    <div class="switch" id="scopeSwitch">
-      <button data-scope="upcoming" class="on">предстоящие</button>
-      <button data-scope="past">прошедшие</button>
-      <button data-scope="all">все</button>
-    </div>
-    <div id="allList" class="list"></div>
-  </section>
+.ev{
+  display:flex;gap:11px;align-items:stretch;
+  background:linear-gradient(170deg, var(--card), var(--bg2));
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:11px 12px;position:relative;overflow:hidden;
+}
+.ev:active{transform:scale(.993)}
+.ev::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,var(--watch))}
+.ev.attend{--accent:var(--attend)}
+.ev.watch{--accent:var(--watch)}
+.ev.read{--accent:var(--read)}
+.ev.done{--accent:var(--done);opacity:.72}
+.ev.skip{--accent:var(--skip);opacity:.55}
+.ev-time{
+  flex:none;width:46px;display:flex;flex-direction:column;justify-content:center;
+  font-variant-numeric:tabular-nums;font-weight:650;font-size:15px;color:var(--txt);
+}
+.ev-time small{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-top:2px}
+.ev-body{flex:1;min-width:0}
+.ev-title{font-weight:600;font-size:15px;line-height:1.25;word-break:break-word}
+.ev-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:5px;font-size:12px;color:var(--muted)}
+.league{background:rgba(110,231,255,.1);color:#a9e9ff;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:600;white-space:nowrap}
+.ev-note{
+  margin-top:6px;font-size:12.5px;color:#b8cadd;
+  border-left:2px solid rgba(255,255,255,.1);padding-left:7px;white-space:pre-wrap;word-break:break-word;
+}
+.moved{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#ffcf8a;background:rgba(255,181,71,.12);border-radius:6px;padding:1px 6px}
+.clash{
+  display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#ffd0d0;
+  background:rgba(255,99,99,.14);border:1px solid rgba(255,99,99,.24);border-radius:6px;padding:1px 6px;
+}
+.bell{display:inline-flex;align-items:center;font-size:11px;color:#a9ffd0;background:rgba(74,222,128,.13);border-radius:6px;padding:1px 6px}
+.st-badge{font-size:13px;line-height:1;opacity:.95}
 
-  <section id="view-data" class="view hidden">
-    <div class="card">
-      <h3>Счёт</h3>
-      <div class="stats" id="stats"></div>
-    </div>
+.empty{text-align:center;color:var(--muted);padding:44px 24px;font-size:14px}
+.empty b{display:block;color:var(--txt);font-size:15px;margin-bottom:5px;font-weight:600}
 
-    <div class="card">
-      <h3>Напоминания</h3>
-      <p class="muted" id="remindStatus"></p>
-      <div class="btnrow">
-        <button class="btn primary" id="remindToggle">Включить</button>
-        <button class="btn" id="testRemind">Проверить</button>
-      </div>
-    </div>
+.searchwrap{
+  display:flex;align-items:center;gap:9px;margin:8px 18px 0;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:9px 12px;color:var(--muted);
+}
+.searchwrap input{flex:1;background:0;border:0;color:var(--txt);font-size:15px;outline:none;font-family:inherit}
+.searchwrap input::placeholder{color:#6b829c}
+.switch{display:flex;gap:6px;padding:10px 18px 4px}
+.switch button{
+  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--muted);
+  border-radius:10px;padding:7px 4px;font-size:12.5px;font-weight:600;font-family:inherit;
+}
+.switch button.on{background:rgba(110,231,255,.14);border-color:rgba(110,231,255,.45);color:#d8f6ff}
 
-    <div class="card">
-      <h3>Резервная копия</h3>
-      <p class="muted">Данные хранятся только в этом телефоне. Сделай копию перед сменой устройства или очисткой браузера.</p>
-      <div class="btnrow">
-        <button class="btn" id="exportJson">Скачать копию (.json)</button>
-        <button class="btn" id="importJson">Загрузить копию</button>
-      </div>
-      <input type="file" id="fileInput" accept="application/json,.json" hidden>
-    </div>
+.view#view-data{padding:6px 14px}
+.card{
+  background:linear-gradient(170deg,var(--card),var(--bg2));
+  border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-bottom:11px;
+}
+.card h3{font-size:14px;margin-bottom:8px}
+.card p{margin:0 0 11px;font-size:13px;line-height:1.45}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:rgba(255,255,255,.045);border-radius:11px;padding:9px;text-align:center}
+.stat b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  flex:1;min-width:130px;background:rgba(255,255,255,.07);border:1px solid var(--line);
+  color:var(--txt);border-radius:11px;padding:11px 12px;font-size:14px;font-weight:600;font-family:inherit;
+}
+.btn:active{transform:scale(.985)}
+.btn:disabled{opacity:.45}
+.btn.primary{background:linear-gradient(160deg,#2f7ea3,#1f6285);border-color:rgba(110,231,255,.5);color:#fff}
+.btn.wide{flex:1 1 100%;margin-top:8px;min-width:0}
+.danger-btn{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#ff9c9c}
+.card.danger{border-color:rgba(239,68,68,.28)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  background:rgba(110,231,255,.1);color:#a9e9ff;border:1px solid rgba(110,231,255,.22);
+  border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;
+}
+.chip.mine{background:rgba(110,231,255,.2);border-color:rgba(110,231,255,.6);color:#e2faff}
+.chip.ghost{background:transparent;border-style:dashed;color:#6b829c;border-color:rgba(255,255,255,.14)}
 
-    <div class="card">
-      <h3>В календарь</h3>
-      <p class="muted">Выгрузит все предстоящие матчи с напоминанием за час — сработает даже при закрытом приложении.</p>
-      <button class="btn" id="exportIcs">Экспорт .ics</button>
-    </div>
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  display:flex;justify-content:space-around;align-items:center;
+  padding:8px 8px calc(8px + var(--safe-b));
+  background:rgba(10,19,30,.93);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+}
+.tab{
+  background:0;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:10.5px;font-weight:600;padding:4px 18px;border-radius:12px;font-family:inherit;
+}
+.tab.on{color:var(--ice)}
+.tab.on svg{filter:drop-shadow(0 0 7px rgba(110,231,255,.5))}
 
-    <div class="card">
-      <h3>Лиги</h3>
-      <p class="muted">Мои лиги подсвечены. Своя лига сохранится, если вписать её при добавлении матча.</p>
-      <div class="chips" id="leaguesList"></div>
-    </div>
+.fab{
+  position:fixed;right:18px;bottom:calc(92px + var(--safe-b));z-index:31;
+  width:58px;height:58px;border-radius:50%;border:0;
+  background:linear-gradient(160deg,#52c9ea,#2b8fb5);color:#04212e;font-size:31px;line-height:1;
+  box-shadow:0 10px 26px rgba(60,180,220,.34), 0 0 0 1px rgba(255,255,255,.16) inset;
+  display:grid;place-items:center;padding-bottom:3px;
+}
+.fab:active{transform:scale(.94)}
 
-    <div class="card">
-      <h3>Команды</h3>
-      <p class="muted">Мои команды подсвечены. Тап по чипу в форме подставляет их в поля хозяев и гостей.</p>
-      <div class="chips" id="teamsList"></div>
-    </div>
+.sheet-wrap{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end}
+.sheet-bg{position:absolute;inset:0;background:rgba(3,9,15,.66);backdrop-filter:blur(3px)}
+.sheet{
+  position:relative;width:100%;max-height:92dvh;overflow-y:auto;
+  background:linear-gradient(180deg,#17293e,#0f1d2c);
+  border-radius:22px 22px 0 0;border:1px solid var(--line);border-bottom:0;
+  padding:10px 18px calc(24px + var(--safe-b));animation:up .22s ease-out;
+}
+@keyframes up{from{transform:translateY(28px);opacity:.4}to{transform:none;opacity:1}}
+.sheet-grab{width:38px;height:4px;border-radius:99px;background:rgba(255,255,255,.2);margin:4px auto 14px}
+.sheet h2{font-size:17px;margin-bottom:14px}
+.field{display:block;margin-bottom:12px}
+.field > span{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
+.field input,.field textarea{
+  width:100%;background:rgba(255,255,255,.055);border:1px solid var(--line);
+  border-radius:11px;padding:11px 12px;color:var(--txt);font-size:15px;font-family:inherit;outline:none;
+}
+.field input:focus,.field textarea:focus{border-color:rgba(110,231,255,.55);background:rgba(110,231,255,.06)}
+.field textarea{resize:vertical;min-height:52px}
+input[type=date],input[type=time]{color-scheme:dark}
 
-    <div class="card danger">
-      <h3>Очистить</h3>
-      <button class="btn danger-btn" id="wipe">Удалить все события</button>
-    </div>
-  </section>
-</main>
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.preset{
+  background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted);
+  border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;font-family:inherit;transition:.12s;
+}
+.preset:active{transform:scale(.95)}
+.preset.on{background:rgba(110,231,255,.18);border-color:rgba(110,231,255,.55);color:#d8f6ff}
 
-<nav class="tabbar">
-  <button class="tab on" data-view="day">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-    <span>День</span>
-  </button>
-  <button class="tab" data-view="all">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-    <span>Всё</span>
-  </button>
-  <button class="tab" data-view="data">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
-    <span>Данные</span>
-  </button>
-</nav>
+.teamblock{background:rgba(255,255,255,.025);border-radius:12px;padding:10px 11px 11px}
+.teamblock .presets{margin-top:0}
 
-<button class="fab" id="addBtn" aria-label="Добавить матч">+</button>
+.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.statusrow{display:flex;flex-wrap:wrap;gap:6px}
+.st{
+  background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted);
+  border-radius:10px;padding:8px 11px;font-size:13px;font-weight:600;font-family:inherit;
+}
+.st.on{color:#04212e}
+.st[data-st=attend].on{background:var(--attend);border-color:var(--attend)}
+.st[data-st=watch].on{background:var(--watch);border-color:var(--watch)}
+.st[data-st=read].on{background:var(--read);border-color:var(--read)}
+.st[data-st=done].on{background:var(--done);border-color:var(--done)}
+.st[data-st=skip].on{background:#94a3b8;border-color:#94a3b8;color:#101a24}
+.hint{font-size:12px;color:#ffcf8a;margin:0 0 10px}
+.hint:empty{display:none}
 
-<div class="sheet-wrap hidden" id="sheetWrap">
-  <div class="sheet-bg" id="sheetBg"></div>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <div class="sheet-grab"></div>
-    <h2 id="sheetTitle">Новый матч</h2>
-    <form id="form" autocomplete="off">
+.toast{
+  position:fixed;left:50%;bottom:calc(110px + var(--safe-b));transform:translate(-50%,14px);
+  background:rgba(20,38,56,.97);border:1px solid rgba(110,231,255,.35);
+  color:#dff6ff;font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;
+  opacity:0;pointer-events:none;transition:.22s;z-index:60;max-width:88vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 
-      <label class="field">
-        <span>Дата</span>
-        <input type="date" id="f-date" required>
-      </label>
-
-      <div class="field">
-        <span>Время <em class="muted">(можно пустым)</em></span>
-        <input type="time" id="f-time">
-        <div class="presets" id="timePresets"></div>
-      </div>
-
-      <div class="field">
-        <span>Лига</span>
-        <input type="text" id="f-league" list="leagueDatalist" placeholder="КХЛ, NHL, Чемпионат мира…">
-        <datalist id="leagueDatalist"></datalist>
-        <div class="presets" id="leaguePresets"></div>
-      </div>
-
-      <div class="two">
-        <label class="field">
-          <span>Хозяева</span>
-          <input type="text" id="f-home" list="teamDatalist" placeholder="Сибирь">
-        </label>
-        <label class="field">
-          <span>Гости</span>
-          <input type="text" id="f-away" list="teamDatalist" placeholder="Авангард">
-        </label>
-      </div>
-      <datalist id="teamDatalist"></datalist>
-
-      <div class="field teamblock">
-        <div class="presets" id="teamPresets"></div>
-        <p class="tiny">Тап по команде заполнит поле, где стоит курсор, или первое пустое.</p>
-      </div>
-
-      <div class="field">
-        <span>Что с матчем</span>
-        <div class="statusrow" id="statusRow">
-          <button type="button" class="st" data-st="attend">🎟 иду</button>
-          <button type="button" class="st" data-st="watch">📺 смотрю</button>
-          <button type="button" class="st" data-st="read">📖 почитать</button>
-          <button type="button" class="st" data-st="done">✅ было</button>
-          <button type="button" class="st" data-st="skip">🚫 мимо</button>
-        </div>
-        <p class="tiny">Напомню за час до матчей «иду» и «смотрю».</p>
-      </div>
-
-      <label class="field">
-        <span>Заметка</span>
-        <textarea id="f-note" rows="2" placeholder="где смотреть, во сколько выезд, что почитать…"></textarea>
-      </label>
-
-      <p class="hint" id="moveHint"></p>
-
-      <div class="btnrow">
-        <button type="submit" class="btn primary">Сохранить</button>
-        <button type="button" class="btn" id="cancelBtn">Отмена</button>
-      </div>
-      <button type="button" class="btn danger-btn wide hidden" id="deleteBtn">Удалить матч</button>
-      <button type="button" class="btn wide hidden" id="dupBtn">Дублировать матч</button>
-    </form>
-  </div>
-</div>
-
-<div id="toast" class="toast"></div>
-
-<script src="app.js"></script>
-</body>
-</html>
+@media (min-width:640px){
+  .list,.view#view-data{max-width:620px;margin:0 auto}
+  .filters,.weekbar,.topbar{max-width:620px;margin-left:auto;margin-right:auto}
+}

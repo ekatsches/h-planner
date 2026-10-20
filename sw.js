@@ -1,5 +1,5 @@
 /* офлайн-кеш + клик по уведомлению */
-const CACHE = 'hockey-planner-v3';
+const CACHE = 'hockey-planner-v4';
 const ASSETS = [
   './',
   './index.html',

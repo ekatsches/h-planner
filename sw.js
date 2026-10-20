@@ -1,5 +1,5 @@
 /* офлайн-кеш + клик по уведомлению */
-const CACHE = 'hockey-planner-v2';
+const CACHE = 'hockey-planner-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -7,12 +7,15 @@ const ASSETS = [
   './app.js',
   './manifest.json',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/icon-512-maskable.png'
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then(c => Promise.allSettled(ASSETS.map(u => c.add(u))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -27,7 +30,6 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-
   e.respondWith(
     caches.match(req).then(hit => {
       if (hit) {
@@ -47,11 +49,9 @@ self.addEventListener('fetch', e => {
   );
 });
 
-/* клик по уведомлению — открыть приложение на нужном матче */
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const data = e.notification.data || {};
-
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {

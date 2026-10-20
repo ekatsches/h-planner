@@ -209,8 +209,8 @@ async function fireReminder(ev) {
     if (reg && reg.showNotification) {
       await reg.showNotification(title, {
         body,
-        icon: 'icons/icon-192.png',
-        badge: 'icons/icon-192.png',
+        icon: 'icon-192.png',
+        badge: 'icon-192.png',
         tag: 'match-' + ev.id,
         renotify: true,
         vibrate: [120, 60, 120],
@@ -224,7 +224,7 @@ async function fireReminder(ev) {
 
   // запасной путь — обычное уведомление
   try {
-    new Notification(title, { body, icon: 'icons/icon-192.png', tag: 'match-' + ev.id });
+    new Notification(title, { body, icon: 'icon-192.png', tag: 'match-' + ev.id });
   } catch (err) {
     console.warn(err);
     toast(`Скоро: ${title}`);

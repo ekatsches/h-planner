@@ -3,12 +3,17 @@
 
 const STORE_KEY = 'hockeyPlanner.v1';
 const REMIND_KEY = 'hockeyPlanner.remind';
-const REMIND_MIN = 60;          // за сколько минут до матча напоминать
+const REMIND_MIN = 60;
 
-/* Предзаготовленные лиги: порядок важен, показываем как чипы в форме */
+/* Предзаготовленные лиги */
 const PRESET_LEAGUES = ['КХЛ', 'МХЛ', 'ВХЛ', 'NHL', 'WHL', 'OHL'];
 
-/* Категории, по которым имеет смысл напоминать */
+/* Предзаготовленные команды — те, за кем слежу */
+const PRESET_TEAMS = ['Сибирь', 'Авангард', 'Торпедо', 'Снайперы', 'Авто', 'Чайка', 'Блейдс'];
+
+/* Предзаготовленное время — обычное время матчей на арене */
+const PRESET_TIMES = ['18:30', '13:00'];
+
 const REMIND_STATUSES = ['attend', 'watch'];
 
 const STATUS = {
@@ -54,7 +59,6 @@ function mondayOf(s) {
   d.setDate(d.getDate() - shift);
   return ymd(d);
 }
-/* Дата+время события как объект Date (локальное время) */
 function eventDate(ev) {
   if (!ev.time) return null;
   const d = parseYmd(ev.date);
@@ -144,7 +148,6 @@ function matchesQuery(ev, q) {
   const hay = [titleOf(ev), ev.league, ev.note].join(' ').toLowerCase();
   return hay.includes(q);
 }
-/* Нужно ли напоминание по этому событию */
 function wantsReminder(ev) {
   return REMIND_STATUSES.includes(ev.status) && !!ev.time;
 }
@@ -156,9 +159,8 @@ function remindersSupported() {
    НАПОМИНАНИЯ
    ========================================================= */
 let remindTimer = null;
-const firedThisSession = new Set();   // чтобы не дублировать в рамках одной сессии
+const firedThisSession = new Set();
 
-/* Ближайший момент напоминания из всех будущих событий */
 function nextReminder() {
   if (!state.remindersOn) return null;
   const now = Date.now();
@@ -173,21 +175,18 @@ function nextReminder() {
   return best;
 }
 
-/* Пересчитать таймер. Ставим на ближайшее событие, после срабатывания — на следующее. */
 function scheduleReminders() {
   if (remindTimer) { clearTimeout(remindTimer); remindTimer = null; }
   const next = nextReminder();
-  updateRemindStatus(next);
-
+  if (state.view === 'data') renderRemindCard();
   if (!next) return;
   const delay = next.at.getTime() - Date.now();
-  // setTimeout не любит задержки больше ~24.8 дней — ограничим
   const capped = Math.min(delay, 2147483000);
   remindTimer = setTimeout(async () => {
     remindTimer = null;
     if (capped < delay) { scheduleReminders(); return; }
     await fireReminder(next.ev);
-    scheduleReminders();       // сразу планируем следующее
+    scheduleReminders();
   }, Math.max(capped, 0));
 }
 
@@ -219,10 +218,9 @@ async function fireReminder(ev) {
       return;
     }
   } catch (err) {
-    console.warn('service worker notification не сработал', err);
+    console.warn('sw notification не сработал', err);
   }
 
-  // запасной путь — обычное уведомление
   try {
     new Notification(title, { body, icon: 'icon-192.png', tag: 'match-' + ev.id });
   } catch (err) {
@@ -262,7 +260,6 @@ function disableReminders() {
   save();
   if (remindTimer) { clearTimeout(remindTimer); remindTimer = null; }
   renderRemindCard();
-  updateRemindStatus(null);
   toast('Напоминания выключены');
 }
 
@@ -280,9 +277,10 @@ function renderRemindCard() {
   const granted = supported && Notification.permission === 'granted';
   const status = $('remindStatus');
   const btn = $('remindToggle');
+  if (!status || !btn) return;
 
   if (!supported) {
-    status.textContent = 'Браузер не поддерживает уведомления. Но напоминания всё равно попадут в календарь через экспорт .ics ниже.';
+    status.textContent = 'Браузер не поддерживает уведомления. Но напоминания попадут в календарь через экспорт .ics ниже.';
     btn.textContent = 'Недоступно';
     btn.disabled = true;
     btn.classList.remove('primary');
@@ -304,7 +302,7 @@ function renderRemindCard() {
       const isToday = ymd(d) === todayYmd();
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
-      when = ` Ближайшее — ${isToday ? 'сегодня' : shortDate(ymd(d))} в ${hh}:${mm}.`;
+      when = ` Ближайшее напоминание — ${isToday ? 'сегодня' : shortDate(ymd(d))} в ${hh}:${mm}.`;
     }
     status.textContent = n
       ? `Включены. Напомню про ${n} ${plural(n, 'матч', 'матча', 'матчей')}.${when}`
@@ -313,10 +311,6 @@ function renderRemindCard() {
     btn.disabled = false;
     btn.classList.remove('primary');
   }
-}
-
-function updateRemindStatus(next) {
-  if (state.view === 'data') renderRemindCard();
 }
 
 async function testReminder() {
@@ -330,8 +324,8 @@ async function testReminder() {
     date: todayYmd(),
     time: '00:00',
     league: 'КХЛ',
-    home: 'Спартак',
-    away: 'ЦСКА',
+    home: 'Сибирь',
+    away: 'Авангард',
     note: 'Так будет выглядеть напоминание за час до матча'
   };
   await fireReminder(probe);
@@ -372,7 +366,6 @@ function renderStrip() {
   if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
-/* --- экран "День" --- */
 let conflictMap = {};
 
 function minutes(hhmm) {
@@ -501,20 +494,39 @@ function renderData() {
     <div class="stat"><b>${ahead}</b><span>впереди</span></div>
     <div class="stat"><b>${attend}</b><span>иду</span></div>`;
 
-  // лиги: предзаготовленные + свои
-  const used = new Set(state.events.map(e => (e.league || '').trim()).filter(Boolean));
-  const mine = PRESET_LEAGUES.filter(l => used.has(l));
-  const other = [...used].filter(l => !PRESET_LEAGUES.includes(l)).sort((a, b) => a.localeCompare(b, 'ru'));
-  const unused = PRESET_LEAGUES.filter(l => !used.has(l));
+  // лиги
+  const usedLeagues = new Set(state.events.map(e => (e.league || '').trim()).filter(Boolean));
+  const mineL = PRESET_LEAGUES.filter(l => usedLeagues.has(l));
+  const otherL = [...usedLeagues].filter(l => !PRESET_LEAGUES.includes(l)).sort((a, b) => a.localeCompare(b, 'ru'));
+  const unusedL = PRESET_LEAGUES.filter(l => !usedLeagues.has(l));
 
-  let chipsHtml = mine.map(l => `<span class="chip mine">${esc(l)}</span>`).join('');
-  chipsHtml += other.map(l => `<span class="chip">${esc(l)}</span>`).join('');
-  chipsHtml += unused.map(l => `<span class="chip ghost">${esc(l)}</span>`).join('');
-  $('leaguesList').innerHTML = chipsHtml || `<span class="muted" style="font-size:13px">пока пусто</span>`;
+  $('leaguesList').innerHTML = [
+    ...mineL.map(l => `<span class="chip mine">${esc(l)}</span>`),
+    ...otherL.map(l => `<span class="chip">${esc(l)}</span>`),
+    ...unusedL.map(l => `<span class="chip ghost">${esc(l)}</span>`)
+  ].join('') || `<span class="muted" style="font-size:13px">пока пусто</span>`;
 
-  // datalist для формы
-  const allLeagues = [...new Set([...PRESET_LEAGUES, ...other])];
-  $('leagueDatalist').innerHTML = allLeagues.map(l => `<option value="${esc(l)}">`).join('');
+  // команды
+  const usedTeams = new Set();
+  state.events.forEach(e => {
+    if (e.home) usedTeams.add(e.home.trim());
+    if (e.away) usedTeams.add(e.away.trim());
+  });
+  const mineT = PRESET_TEAMS.filter(t => usedTeams.has(t));
+  const otherT = [...usedTeams].filter(t => t && !PRESET_TEAMS.includes(t)).sort((a, b) => a.localeCompare(b, 'ru'));
+  const unusedT = PRESET_TEAMS.filter(t => !usedTeams.has(t));
+
+  $('teamsList').innerHTML = [
+    ...mineT.map(t => `<span class="chip mine">${esc(t)}</span>`),
+    ...otherT.map(t => `<span class="chip">${esc(t)}</span>`),
+    ...unusedT.map(t => `<span class="chip ghost">${esc(t)}</span>`)
+  ].join('') || `<span class="muted" style="font-size:13px">пока пусто</span>`;
+
+  // datalist-ы
+  $('leagueDatalist').innerHTML = [...new Set([...PRESET_LEAGUES, ...otherL])]
+    .map(l => `<option value="${esc(l)}">`).join('');
+  $('teamDatalist').innerHTML = [...new Set([...PRESET_TEAMS, ...otherT])]
+    .map(t => `<option value="${esc(t)}">`).join('');
 
   renderRemindCard();
 }
@@ -543,14 +555,56 @@ function goDay(d) {
 }
 
 /* =========================================================
-   ФОРМА
+   ФОРМА: пресеты
    ========================================================= */
+let activeTeamField = 'f-home';
+
 function renderLeaguePresets(active) {
-  const box = $('leaguePresets');
-  const cur = (active || '').trim();
-  box.innerHTML = PRESET_LEAGUES.map(l =>
-    `<button type="button" class="preset ${cur.toLowerCase() === l.toLowerCase() ? 'on' : ''}" data-league="${esc(l)}">${esc(l)}</button>`
+  const cur = (active != null ? active : $('f-league').value || '').trim().toLowerCase();
+  $('leaguePresets').innerHTML = PRESET_LEAGUES.map(l =>
+    `<button type="button" class="preset ${cur === l.toLowerCase() ? 'on' : ''}" data-league="${esc(l)}">${esc(l)}</button>`
   ).join('');
+}
+
+function renderTimePresets() {
+  const cur = $('f-time').value || '';
+  $('timePresets').innerHTML = PRESET_TIMES.map(t =>
+    `<button type="button" class="preset ${cur === t ? 'on' : ''}" data-time="${t}">${esc(t)}</button>`
+  ).join('');
+}
+
+function renderTeamPresets() {
+  const home = ($('f-home').value || '').trim().toLowerCase();
+  const away = ($('f-away').value || '').trim().toLowerCase();
+  $('teamPresets').innerHTML = PRESET_TEAMS.map(t => {
+    const low = t.toLowerCase();
+    const on = low === home || low === away;
+    return `<button type="button" class="preset ${on ? 'on' : ''}" data-team="${esc(t)}">${esc(t)}</button>`;
+  }).join('');
+}
+
+/* Тап по команде: сначала в поле, где стоит курсор, потом в первое пустое */
+function pickTeam(name) {
+  const home = $('f-home');
+  const away = $('f-away');
+  const active = $(activeTeamField);
+
+  let target = null;
+  if (active && !active.value.trim()) target = active;
+  if (!target) target = !home.value.trim() ? home : (!away.value.trim() ? away : (active || home));
+
+  target.value = name;
+
+  // курсор — в следующее пустое поле, чтобы вторую команду тапнуть сразу
+  const next = !home.value.trim() ? home : (!away.value.trim() ? away : null);
+  if (next) {
+    activeTeamField = next.id;
+    next.focus();
+  } else {
+    activeTeamField = target.id;
+    target.focus();
+  }
+  renderTeamPresets();
 }
 
 function openSheet(id) {
@@ -565,6 +619,9 @@ function openSheet(id) {
   $('f-note').value = ev ? (ev.note || '') : '';
   setFormStatus(ev ? ev.status : 'watch');
   renderLeaguePresets(ev ? ev.league : '');
+  renderTimePresets();
+  activeTeamField = $('f-home').value.trim() ? 'f-away' : 'f-home';
+  renderTeamPresets();
   $('deleteBtn').classList.toggle('hidden', !ev);
   $('dupBtn').classList.toggle('hidden', !ev);
   $('moveHint').textContent = (ev && ev.history && ev.history.length)
@@ -574,11 +631,13 @@ function openSheet(id) {
   document.body.style.overflow = 'hidden';
   setTimeout(() => { if (!ev) $('f-home').focus(); }, 220);
 }
+
 function closeSheet() {
   $('sheetWrap').classList.add('hidden');
   document.body.style.overflow = '';
   state.editId = null;
 }
+
 function setFormStatus(st) {
   state.formStatus = st;
   $('statusRow').querySelectorAll('.st').forEach(b => b.classList.toggle('on', b.dataset.st === st));
@@ -740,7 +799,6 @@ function exportIcs() {
     lines.push(`CATEGORIES:${icsEscape(STATUS[ev.status] ? STATUS[ev.status].label : '')}`);
     if (ev.status === 'attend') lines.push('TRANSP:OPAQUE');
 
-    // напоминание за час — работает даже при закрытом приложении, силами календаря
     if (wantsReminder(ev)) {
       lines.push('BEGIN:VALARM');
       lines.push('TRIGGER:-PT60M');
@@ -754,7 +812,7 @@ function exportIcs() {
   lines.push('END:VCALENDAR');
 
   download(`hockey-${todayYmd()}.ics`, lines.join('\r\n'), 'text/calendar;charset=utf-8');
-  toast(`Готово: ${items.length} ${plural(items.length, 'матч', 'матча', 'матчей')}, из них с напоминанием ${withAlarm}`);
+  toast(`Готово: ${items.length} ${plural(items.length, 'матч', 'матча', 'матчей')}, с напоминанием ${withAlarm}`);
 }
 
 /* =========================================================
@@ -776,7 +834,7 @@ function bind() {
     if (b) setFormStatus(b.dataset.st);
   });
 
-  // чипы предзаготовленных лиг
+  // лиги
   $('leaguePresets').addEventListener('click', e => {
     const b = e.target.closest('.preset');
     if (!b) return;
@@ -784,6 +842,26 @@ function bind() {
     renderLeaguePresets(b.dataset.league);
   });
   $('f-league').addEventListener('input', e => renderLeaguePresets(e.target.value));
+
+  // время
+  $('timePresets').addEventListener('click', e => {
+    const b = e.target.closest('.preset');
+    if (!b) return;
+    $('f-time').value = b.dataset.time;
+    renderTimePresets();
+  });
+  $('f-time').addEventListener('input', renderTimePresets);
+
+  // команды
+  $('teamPresets').addEventListener('click', e => {
+    const b = e.target.closest('.preset');
+    if (!b) return;
+    pickTeam(b.dataset.team);
+  });
+  ['f-home', 'f-away'].forEach(id => {
+    $(id).addEventListener('focus', () => { activeTeamField = id; });
+    $(id).addEventListener('input', renderTeamPresets);
+  });
 
   // неделя
   $('prevWeek').addEventListener('click', () => goDay(addDays(state.day, -7)));
@@ -804,7 +882,6 @@ function bind() {
     if (b) goDay(b.dataset.day);
   });
 
-  // фильтры
   $('filtersDay').addEventListener('click', e => {
     const b = e.target.closest('[data-fkey]');
     if (!b) return;
@@ -832,14 +909,12 @@ function bind() {
     if (card && card.dataset.id) openSheet(card.dataset.id);
   });
 
-  // напоминания
   $('remindToggle').addEventListener('click', () => {
     if (state.remindersOn) disableReminders();
     else enableReminders();
   });
   $('testRemind').addEventListener('click', testReminder);
 
-  // данные
   $('exportJson').addEventListener('click', exportJson);
   $('importJson').addEventListener('click', () => $('fileInput').click());
   $('fileInput').addEventListener('change', e => {
@@ -860,7 +935,6 @@ function bind() {
     if (e.key === 'Escape' && !$('sheetWrap').classList.contains('hidden')) closeSheet();
   });
 
-  // вернулись на вкладку / из фона — пересчитать таймеры
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) { scheduleReminders(); render(); }
   });
